@@ -1,0 +1,15 @@
+{
+    "name": "ErickSkrauch/SkinRenderer2D",
+    "type": "library",
+    "keywords": ["minecraft","render", "skin"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "ErickSkrauch",
+            "email": "erickskrauch@ely.by"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    }
+}
