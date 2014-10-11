@@ -9,6 +9,11 @@
             "email": "erickskrauch@ely.by"
         }
     ],
+    "autoload": {
+        "psr-0": {
+            "ErickSkrauch\\SkinLoader2D": ""
+        }
+    },
     "require": {
         "php": ">=5.3.0"
     }
