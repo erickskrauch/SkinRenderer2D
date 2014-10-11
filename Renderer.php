@@ -221,9 +221,9 @@ class Renderer {
         $newImage = $this->createEmptyImage(8, 8);
 
         //head | голова
-        imagecopy($newImage, $this->image, 4, 0, 8, 8, 8, 8);
+        imagecopy($newImage, $this->image, 0, 0, 8, 8, 8, 8);
         //head mask | маска
-        $this->imageСopyAlpha($newImage, $this->image, 4, 0, 40, 8, 8, 8, $colorAt);
+        $this->imageСopyAlpha($newImage, $this->image, 0, 0, 40, 8, 8, 8, $colorAt);
 
         if($scale != 1)
             return $this->scaleImage($newImage, $newWidth, $newHeight, false);
@@ -251,10 +251,8 @@ class Renderer {
 
         $newImage = $this->createEmptyImage(16, 32, $r, $g, $b);
 
-        //head | голова
-        imagecopy($newImage, $this->image, 4, 0, 8, 8, 8, 8);
-        //head mask | маска
-        $this->imageСopyAlpha($newImage, $this->image, 4, 0, 40, 8, 8, 8, $colorAt);
+        // head with mask | голова с маской
+        imagecopy($newImage, $this->renderFace(), 4, 0, 0, 0, 8, 8);
         //body | тело
         imagecopy($newImage, $this->image, 4, 8, 20, 20, 8, 12);
         //right leg | правая нога
@@ -314,8 +312,11 @@ class Renderer {
 
         $newImage = $this->createEmptyImage(16, 32, $r, $g, $b);
 
-        // head with mask | голова с маской
-        imagecopy($newImage, $this->renderFace(), 4, 0, 0, 0, 8, 8);
+
+        //head | голова
+        imagecopy($newImage, $this->image, 4, 0, 24, 8, 8, 8);
+        //head mask | маска
+        $this->imageСopyAlpha($newImage, $this->image, 4, 0, 56, 8, 8, 8, imagecolorat($this->image, 63, 0));
         //body | тело
         imagecopy($newImage, $this->image, 4, 8, 32, 20, 8, 12);
         //right leg | правая нога
