@@ -27,7 +27,7 @@ namespace ErickSkrauch\SkinRenderer2D;
 class Renderer {
     private $image = NULL;
     private $isAlpha = NULL;
-    private $is1_8;
+    private $is1_8 = NULL;
 
     /**
      * Loads the skin image from a file path
@@ -37,7 +37,7 @@ class Renderer {
      * @param $file
      * @throws \Exception
      */
-    public function assignSkinFromFile ($file) {
+    public function assignSkinFromFile($file) {
         if (!is_null($this->image)) {
             imagedestroy($this->image);
             $this->clearCache();
@@ -60,7 +60,7 @@ class Renderer {
      * @param $data
      * @throws \Exception
      */
-    public function assignSkinFromString ($data) {
+    public function assignSkinFromString($data) {
         if (!is_null($this->image)) {
             imagedestroy($this->image);
             $this->clearCache();
@@ -83,7 +83,7 @@ class Renderer {
      * @return int
      * @throws \Exception
      */
-    public function getWidth () {
+    public function getWidth() {
         if(!is_null($this->image))
             return imagesx($this->image);
 
@@ -98,14 +98,25 @@ class Renderer {
      * @return int
      * @throws \Exception
      */
-    public function getHeight () {
+    public function getHeight() {
         if(!is_null($this->image))
             return imagesy($this->image);
 
         throw new \Exception("No skin loaded.");
     }
 
-    // TODO: phpdoc блок
+    /**
+     * Return true if the skin has alpha chanel
+     * ================================================
+     * Возвращает true, если скин имеет альфа канал
+     *
+     * Почему смотрим именно [1, 1] пиксель, а не [0, 0]? Некоторые редакторы скинов
+     * оставляют там палитру цветов, использованных в скине, из-за чего функция
+     * возвращает false
+     *
+     * @return bool|null
+     * @throws \Exception
+     */
     public function isAlpha() {
         if(is_null($this->image))
             throw new \Exception("No skin loaded.");
@@ -122,7 +133,7 @@ class Renderer {
      *
      * @return bool
      */
-    public function isValid () {
+    public function isValid() {
         if ($this->getWidth() != 64 && ($this->getHeight() != 32 || $this->getHeight() != 64))
             return false;
 
@@ -130,7 +141,10 @@ class Renderer {
         return true;
     }
 
-    // TODO: phpdoc блок
+    /**
+     * Clear all singletons variables
+     * Очищает все singleton переменные
+     */
     private function clearCache() {
         $this->isAlpha = NULL;
         $this->is1_8 = NULL;
@@ -167,7 +181,17 @@ class Renderer {
         return $newImage;
     }
 
-    // TODO: оформить phpdoc блок
+    /**
+     * Utility to scale the image given store the transparency
+     * ================================================
+     * Утилита для масштабирования изображения с учётом прозрачности
+     *
+     * @param $image
+     * @param $newWidth
+     * @param $newHeight
+     * @param bool $saveAlpha
+     * @return resource
+     */
     private function scaleImage($image, $newWidth, $newHeight, $saveAlpha = false) {
         $resize = imagecreatetruecolor($newWidth, $newHeight);
 
@@ -183,6 +207,31 @@ class Renderer {
     }
 
     /**
+     * Return an image handle consisting of an (optionally) scaled face view of the skin
+     * ================================================
+     * Возвращает дескриптор изображения, опционально увеличиенного, с лицом скина
+     *
+     * @param int $scale
+     * @return resource
+     */
+    public function renderFace($scale = 1) {
+        $newWidth = $newHeight = 8 * $scale;
+        $colorAt = imagecolorat($this->image, 62, 1);
+
+        $newImage = $this->createEmptyImage(8, 8);
+
+        //head | голова
+        imagecopy($newImage, $this->image, 4, 0, 8, 8, 8, 8);
+        //head mask | маска
+        $this->imageСopyAlpha($newImage, $this->image, 4, 0, 40, 8, 8, 8, $colorAt);
+
+        if($scale != 1)
+            return $this->scaleImage($newImage, $newWidth, $newHeight, false);
+
+        return $newImage;
+    }
+
+    /**
      * Returns an image handle consisting of an (optionally) scaled front view of the skin.
      * $r, $g, $b are used to construct the background color.
      * ================================================
@@ -195,7 +244,7 @@ class Renderer {
      * @param int $b
      * @return resource
      */
-    public function frontImage ($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
+    public function renderFront($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
         $newWidth = 16 * $scale;
         $newHeight = 32 * $scale;
         $colorAt = imagecolorat($this->image, 62, 1);
@@ -258,17 +307,15 @@ class Renderer {
      * @param int $b
      * @return resource
      */
-    public function backImage ($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
+    public function renderBack($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
         $newWidth = 16 * $scale;
         $newHeight = 32 * $scale;
         $colorAt = imagecolorat($this->image, 62, 1);
 
         $newImage = $this->createEmptyImage(16, 32, $r, $g, $b);
 
-        //head | голова
-        imagecopy($newImage, $this->image, 4, 0, 24, 8, 8, 8);
-        //head mask | маска
-        $this->imageСopyAlpha($newImage, $this->image, 4, 0, 56, 8, 8, 8, imagecolorat($this->image, 63, 0));
+        // head with mask | голова с маской
+        imagecopy($newImage, $this->renderFace(), 4, 0, 0, 0, 8, 8);
         //body | тело
         imagecopy($newImage, $this->image, 4, 8, 32, 20, 8, 12);
         //right leg | правая нога
@@ -320,14 +367,13 @@ class Renderer {
      * @param int $b
      * @return resource
      */
-    public function combinedImage ($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
-        $newWidth = 32 * $scale;
-        $newHeight = 32 * $scale;
+    public function renderCombined($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
+        $newWidth = $newHeight = 32 * $scale;
 
         $newImage = $this->createEmptyImage(32, 32, $r, $g, $b);
 
-        $front = $this->frontImage(1, $r, $g, $b);
-        $back = $this->backImage(1, $r, $g, $b);
+        $front = $this->renderFront(1, $r, $g, $b);
+        $back = $this->renderBack(1, $r, $g, $b);
         imagecopy($newImage, $front, 0, 0, 0, 0, 16, 32);
         imagecopy($newImage, $back, 16, 0, 0, 0, 16, 32);
 
@@ -378,7 +424,20 @@ class Renderer {
         }
     }
 
-    // TODO: phpdoc блок
+    /**
+     * In the old format skins left arm and leg should be reflected
+     * ================================================
+     * В старом формате скина левые рука и нога должны быть отражены
+     *
+     * @param resource $result
+     * @param resource $img
+     * @param int $rx
+     * @param int $ry
+     * @param int $x
+     * @param int $y
+     * @param null $size_x
+     * @param null $size_y
+     */
     private function imageFlip(&$result, &$img, $rx = 0, $ry = 0, $x = 0, $y = 0, $size_x = null, $size_y = null) {
         if ($size_x < 1)
             $size_x = imagesx($img);
@@ -394,4 +453,3 @@ class Renderer {
             imagedestroy($this->image);
     }
 }
-?>
