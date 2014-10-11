@@ -142,6 +142,20 @@ class Renderer {
     }
 
     /**
+     * Return true if the skin has 1.8 format
+     * Возвращает true, если скин имеет формат 1.8
+     *
+     * @return bool
+     * @throws \Exception
+     */
+    public function is1_8() {
+        if (is_null($this->image))
+            throw new \Exception("No skin loaded.");
+
+        return $this->is1_8;
+    }
+
+    /**
      * Clear all singletons variables
      * Очищает все singleton переменные
      */
