@@ -11,7 +11,7 @@
     ],
     "autoload": {
         "psr-0": {
-            "ErickSkrauch\\SkinLoader2D\\": ""
+            "ErickSkrauch\\SkinRenderer2D\\": ""
         }
     },
     "require": {
