@@ -48,5 +48,13 @@ function temp_link($resource) {
     <img src="<? echo temp_link($renderer->renderCombined(1)); ?>" />
     <img src="<? echo temp_link($renderer->renderCombined(10)); ?>" />
     <img src="<? echo temp_link($renderer->renderCombined(10, 0, 0, 0)); ?>" />
+
+    <h1>Деградатор | Degrade</h1>
+    <img src="<? echo temp_link($renderer->degrade(false)); ?>" />
+    <img src="<? echo temp_link($renderer->degrade(true)); ?>" />
+
+    <h1>Обновлятор | Improve</h1>
+    <? $renderer->assignSkinFromFile(__DIR__ . "/demo_skin_old.png"); ?>
+    <img src="<? echo temp_link($renderer->improve()); ?>" />
 </body>
 </html>

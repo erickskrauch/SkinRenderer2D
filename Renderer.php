@@ -463,6 +463,50 @@ class Renderer {
         imagecopyresampled($result, $img, $rx, $ry, ($x + $size_x - 1), $y, $size_x, $size_y, 0 - $size_x, $size_y);
     }
 
+    /**
+     * Degrades skin from the new to the old format
+     * ================================================
+     * Меняет формат скина с нового на старый
+     *
+     * @param bool $overlay Наложить ли новые части скина на старый шаблон (возможны артефакты на руках и ногах)
+     * @throws \Exception
+     * @return resource
+     */
+    public function degrade($overlay = false) {
+        if (!$this->is1_8())
+            throw new \Exception("Skin not in 1.8 format!");
+
+        $newImage = $this->createEmptyImage(64, 32);
+        imagecopy($newImage, $this->image, 0, 0, 0, 0, 64, 32);
+
+        if ($overlay) {
+            //left arm 2 | левая рука 2
+            imagecopy($newImage, $this->image, 40, 16, 40, 32, 16, 16);
+            //left leg 2 | левая нога 2
+            imagecopy($newImage, $this->image, 0, 16, 0, 48, 16, 16);
+            //body 2 | тело 2
+            imagecopy($newImage, $this->image, 16, 16, 16, 32, 24, 16);
+        }
+
+        return $newImage;
+    }
+
+    public function improve() {
+        if ($this->is1_8())
+            throw new \Exception("Skin already in 1.8 format!");
+
+        $newImage = $this->createEmptyImage(64, 64);
+        imagecopy($newImage, $this->image, 0, 0, 0, 0, 64, 32);
+
+        // right arm | правая рука
+        imagecopy($newImage, $this->image, 32, 48, 40, 16, 16, 16);
+
+        // right leg | правая нога
+        imagecopy($newImage, $this->image, 16, 48, 0, 16, 16, 16);
+
+        return $newImage;
+    }
+
     public function __destruct() {
         if (!is_null($this->image))
             imagedestroy($this->image);
