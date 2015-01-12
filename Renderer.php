@@ -25,31 +25,22 @@ SOFTWARE.
 namespace ErickSkrauch\SkinRenderer2D;
 
 class Renderer {
-    private $image = NULL;
-    private $isAlpha = NULL;
-    private $is1_8 = NULL;
+    protected $image = NULL;
+    protected $isAlpha = NULL;
+    protected $is1_8 = NULL;
 
     /**
      * Loads the skin image from a file path
      * ================================================
      * Загржает изображение скина из указанного пути
      *
-     * @param $file
+     * @param string $filePath путь к png файлу скина
+     * @return self
      * @throws \Exception
      */
-    public function assignSkinFromFile($file) {
-        if (!is_null($this->image)) {
-            imagedestroy($this->image);
-            $this->clearCache();
-        }
-
-        $this->image = imagecreatefrompng($file);
-
-        if(!$this->image)
-            throw new \Exception("Could not open PNG file.");
-
-        if(!$this->isValid())
-            throw new \Exception("Invalid skin image.");
+    public static function assignSkinFromFile($filePath) {
+        $image = imagecreatefrompng($filePath);
+        return new static($image);
     }
 
     /**
@@ -58,21 +49,12 @@ class Renderer {
      * Загружает изображение скина из переданной строки
      *
      * @param $data
+     * @return self
      * @throws \Exception
      */
-    public function assignSkinFromString($data) {
-        if (!is_null($this->image)) {
-            imagedestroy($this->image);
-            $this->clearCache();
-        }
-
-        $this->image = imagecreatefromstring($data);
-
-        if(!$this->image)
-            throw new \Exception("Could not load image data from string.");
-
-        if(!$this->isValid())
-            throw new \Exception("Invalid skin image.");
+    public static function assignSkinFromString($data) {
+        $image = imagecreatefromstring($data);
+        return new static($image);
     }
 
     /**
@@ -81,13 +63,9 @@ class Renderer {
      * Возвращает ширину скина
      *
      * @return int
-     * @throws \Exception
      */
     public function getWidth() {
-        if(!is_null($this->image))
-            return imagesx($this->image);
-
-         throw new \Exception("No skin loaded.");
+        return imagesx($this->image);
     }
 
     /**
@@ -96,13 +74,9 @@ class Renderer {
      * Возвращает высоту скина
      *
      * @return int
-     * @throws \Exception
      */
     public function getHeight() {
-        if(!is_null($this->image))
-            return imagesy($this->image);
-
-        throw new \Exception("No skin loaded.");
+        return imagesy($this->image);
     }
 
     /**
@@ -114,13 +88,10 @@ class Renderer {
      * оставляют там палитру цветов, использованных в скине, из-за чего функция
      * возвращает false
      *
-     * @return bool|null
+     * @return bool
      * @throws \Exception
      */
     public function isAlpha() {
-        if(is_null($this->image))
-            throw new \Exception("No skin loaded.");
-
         if (is_null($this->isAlpha))
             $this->isAlpha = imagecolorsforindex($this->image, imagecolorat($this->image, 1, 1))['alpha'] == 127;
 
@@ -134,11 +105,7 @@ class Renderer {
      * @return bool
      */
     public function isValid() {
-        if ($this->getWidth() != 64 && ($this->getHeight() != 32 || $this->getHeight() != 64))
-            return false;
-
-        $this->is1_8 = $this->getHeight() == 64;
-        return true;
+        return $this->getWidth() == 64 && ($this->getHeight() == 32 || $this->getHeight() == 64);
     }
 
     /**
@@ -149,19 +116,10 @@ class Renderer {
      * @throws \Exception
      */
     public function is1_8() {
-        if (is_null($this->image))
-            throw new \Exception("No skin loaded.");
+        if (!$this->is1_8)
+            $this->is1_8 = $this->getHeight() == 64;
 
         return $this->is1_8;
-    }
-
-    /**
-     * Clear all singletons variables
-     * Очищает все singleton переменные
-     */
-    private function clearCache() {
-        $this->isAlpha = NULL;
-        $this->is1_8 = NULL;
     }
 
     /**
@@ -174,12 +132,12 @@ class Renderer {
      *
      * @param int $width
      * @param int $height
-     * @param null $r
-     * @param null $g
-     * @param null $b
+     * @param int $r
+     * @param int $g
+     * @param int $b
      * @return resource
      */
-    private function createEmptyImage($width = 16, $height = 32, $r = NULL, $g = NULL, $b = NULL) {
+    protected function createEmptyImage($width = 16, $height = 32, $r = NULL, $g = NULL, $b = NULL) {
         $newImage = imagecreatetruecolor($width, $height);
 
         if (!is_null($r))
@@ -206,7 +164,7 @@ class Renderer {
      * @param bool $saveAlpha
      * @return resource
      */
-    private function scaleImage($image, $newWidth, $newHeight, $saveAlpha = false) {
+    protected function scaleImage($image, $newWidth, $newHeight, $saveAlpha = false) {
         $resize = imagecreatetruecolor($newWidth, $newHeight);
 
         if ($saveAlpha) {
@@ -275,7 +233,7 @@ class Renderer {
         imagecopy($newImage, $this->image, 0, 8, 44, 20, 4, 12);
 
         // Рендерим элементы в зависимости от версии
-        if ($this->is1_8) {
+        if ($this->is1_8()) {
             //left leg | левая нога
             imagecopy($newImage, $this->image, 8, 20, 20, 52, 4, 12);
             //left arm | левая рука
@@ -339,7 +297,7 @@ class Renderer {
         imagecopy($newImage, $this->image, 12, 8, 52, 20, 4, 12);
 
         // Рендерим элементы в зависимости от версии
-        if ($this->is1_8) {
+        if ($this->is1_8()) {
             //left leg | левая нога
             imagecopy($newImage, $this->image, 4, 20, 28, 52, 4, 12);
             //left arm | левая рука
@@ -418,7 +376,7 @@ class Renderer {
      * @param $h
      * @param $bg
      */
-    private function imageСopyAlpha($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $w, $h, $bg) {
+    protected function imageСopyAlpha($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $w, $h, $bg) {
         if (!$this->isAlpha()) {
             for($i = 0; $i < $w; $i++) {
                 for($j = 0; $j < $h; $j++) {
@@ -453,7 +411,7 @@ class Renderer {
      * @param null $size_x
      * @param null $size_y
      */
-    private function imageFlip(&$result, &$img, $rx = 0, $ry = 0, $x = 0, $y = 0, $size_x = null, $size_y = null) {
+    protected function imageFlip(&$result, &$img, $rx = 0, $ry = 0, $x = 0, $y = 0, $size_x = null, $size_y = null) {
         if ($size_x < 1)
             $size_x = imagesx($img);
 
@@ -505,6 +463,20 @@ class Renderer {
         imagecopy($newImage, $this->image, 16, 48, 0, 16, 16, 16);
 
         return $newImage;
+    }
+
+    /**
+     * @param resource $image дескриптор файла скина
+     * @throws \Exception
+     */
+    public function __construct($image) {
+        $this->image = $image;
+
+        if(!$this->image)
+            throw new \Exception("Could not read png image.");
+
+        if(!$this->isValid())
+            throw new \Exception("Invalid skin image.");
     }
 
     public function __destruct() {
