@@ -84,16 +84,19 @@ class Renderer {
      * ================================================
      * Возвращает true, если скин имеет альфа канал
      *
-     * Почему смотрим именно [1, 1] пиксель, а не [0, 0]? Некоторые редакторы скинов
+     * Почему крайние пиксели со смещением в 1px от края? Некоторые редакторы скинов
      * оставляют там палитру цветов, использованных в скине, из-за чего функция
-     * возвращает false
+     * возвращает false. Так что на вский случай проверяем несколько вариантов.
      *
      * @return bool
      * @throws \Exception
      */
     public function isAlpha() {
-        if (is_null($this->isAlpha))
-            $this->isAlpha = imagecolorsforindex($this->image, imagecolorat($this->image, 1, 1))['alpha'] == 127;
+        if (is_null($this->isAlpha)) {
+            $this->isAlpha = $this->checkOpacity(1, 1, true) ||
+                             $this->checkOpacity(62, 1, true) ||
+                             $this->checkOpacity(62, 62, true);
+        }
 
         return $this->isAlpha;
     }
@@ -120,6 +123,23 @@ class Renderer {
             $this->is1_8 = $this->getHeight() == 64;
 
         return $this->is1_8;
+    }
+
+    /**
+     * Test ($x, $y) for having any transparency
+     * Проверяет наличие прозврачности в координатах ($x, $y)
+     *
+     * @param int $x
+     * @param int $y
+     * @param bool $transparent если в true, то проверяет, полностью ли прозрачен пиксель
+     * @return bool
+     */
+    protected function checkOpacity($x, $y, $transparent = false) {
+        $alpha = imagecolorsforindex($this->image, imagecolorat($this->image, $x, $y))['alpha'];
+        if ($transparent)
+            return $alpha == 127;
+        else
+            return $alpha > 0;
     }
 
     /**
