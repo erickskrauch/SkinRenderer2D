@@ -28,6 +28,7 @@ class Renderer {
     protected $image = NULL;
     protected $isAlpha = NULL;
     protected $is1_8 = NULL;
+    protected $isSlim = NULL;
 
     /**
      * Loads the skin image from a file path
@@ -36,7 +37,6 @@ class Renderer {
      *
      * @param string $filePath путь к png файлу скина
      * @return self
-     * @throws \Exception
      */
     public static function assignSkinFromFile($filePath) {
         $image = imagecreatefrompng($filePath);
@@ -50,7 +50,6 @@ class Renderer {
      *
      * @param $data
      * @return self
-     * @throws \Exception
      */
     public static function assignSkinFromString($data) {
         $image = imagecreatefromstring($data);
@@ -89,7 +88,6 @@ class Renderer {
      * возвращает false. Так что на вский случай проверяем несколько вариантов.
      *
      * @return bool
-     * @throws \Exception
      */
     public function isAlpha() {
         if (is_null($this->isAlpha)) {
@@ -116,13 +114,30 @@ class Renderer {
      * Возвращает true, если скин имеет формат 1.8
      *
      * @return bool
-     * @throws \Exception
      */
     public function is1_8() {
         if (!$this->is1_8)
             $this->is1_8 = $this->getHeight() == 64;
 
         return $this->is1_8;
+    }
+
+    /**
+     * Return true if the skin has 1.8 format and slim arms
+     * Возвращает true, если скин имеет формат 1.8 и узкие руки (slim)
+     *
+     * @return bool
+     */
+    public function isSlim() {
+        if (!$this->isSlim) {
+            if (!$this->is1_8()) {
+                $this->isSlim = false;
+            } else {
+                $this->isSlim = $this->checkOpacity(54, 20, true);
+            }
+        }
+
+        return $this->isSlim;
     }
 
     /**
@@ -249,15 +264,23 @@ class Renderer {
         imagecopy($newImage, $this->image, 4, 8, 20, 20, 8, 12);
         //right leg | правая нога
         imagecopy($newImage, $this->image, 4, 20, 4, 20, 4, 12);
+
         //right arm | правая рука
-        imagecopy($newImage, $this->image, 0, 8, 44, 20, 4, 12);
+        if (!$this->isSlim())
+            imagecopy($newImage, $this->image, 0, 8, 44, 20, 4, 12);
+        else
+            imagecopy($newImage, $this->image, 1, 8, 44, 20, 3, 12);
 
         // Рендерим элементы в зависимости от версии
         if ($this->is1_8()) {
             //left leg | левая нога
             imagecopy($newImage, $this->image, 8, 20, 20, 52, 4, 12);
+
             //left arm | левая рука
-            imagecopy($newImage, $this->image, 12, 8, 36, 52, 4, 12);
+            if (!$this->isSlim())
+                imagecopy($newImage, $this->image, 12, 8, 36, 52, 4, 12);
+            else
+                imagecopy($newImage, $this->image, 12, 8, 36, 52, 3, 12);
 
             //body 2 | тело 2
             $this->imageСopyAlpha($newImage, $this->image, 4, 8, 20, 36, 8, 12, $colorAt);
@@ -313,15 +336,23 @@ class Renderer {
         imagecopy($newImage, $this->image, 4, 8, 32, 20, 8, 12);
         //right leg | правая нога
         imagecopy($newImage, $this->image, 8, 20, 12, 20, 4, 12);
+
         //right arm | правая рука
-        imagecopy($newImage, $this->image, 12, 8, 52, 20, 4, 12);
+        if (!$this->isSlim())
+            imagecopy($newImage, $this->image, 12, 8, 52, 20, 4, 12);
+        else
+            imagecopy($newImage, $this->image, 12, 8, 51, 20, 3, 12);
 
         // Рендерим элементы в зависимости от версии
         if ($this->is1_8()) {
             //left leg | левая нога
             imagecopy($newImage, $this->image, 4, 20, 28, 52, 4, 12);
+
             //left arm | левая рука
-            imagecopy($newImage, $this->image, 0, 8, 44, 52, 4, 12);
+            if (!$this->isSlim())
+                imagecopy($newImage, $this->image, 0, 8, 44, 52, 4, 12);
+            else
+                imagecopy($newImage, $this->image, 1, 8, 43, 52, 3, 12);
 
             //body 2 | тело 2
             $this->imageСopyAlpha($newImage, $this->image, 4, 8, 32, 36, 8, 12, $colorAt);
@@ -385,16 +416,6 @@ class Renderer {
      * вместо того, чтобы оставить его прозрачным
      *
      * (прим. пер.) скин Нотча имеет чёрную подкладку и если этого не сделать, то голова будет полностью чёрная
-     *
-     * @param $dst
-     * @param $src
-     * @param $dst_x
-     * @param $dst_y
-     * @param $src_x
-     * @param $src_y
-     * @param $w
-     * @param $h
-     * @param $bg
      */
     protected function imageСopyAlpha($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $w, $h, $bg) {
         if (!$this->isAlpha()) {
@@ -421,15 +442,6 @@ class Renderer {
      * In the old format skins left arm and leg should be reflected
      * ================================================
      * В старом формате скина левые рука и нога должны быть отражены
-     *
-     * @param resource $result
-     * @param resource $img
-     * @param int $rx
-     * @param int $ry
-     * @param int $x
-     * @param int $y
-     * @param null $size_x
-     * @param null $size_y
      */
     protected function imageFlip(&$result, &$img, $rx = 0, $ry = 0, $x = 0, $y = 0, $size_x = null, $size_y = null) {
         if ($size_x < 1)
@@ -452,7 +464,10 @@ class Renderer {
      */
     public function degrade($overlay = false) {
         if (!$this->is1_8())
-            throw new \Exception("Skin not in 1.8 format!");
+            throw new \Exception("Skin is not in 1.8 format!");
+
+        if ($this->isSlim())
+            throw new \Exception("Skin have slim format and can't be convert in old format.");
 
         $newImage = $this->createEmptyImage(64, 32);
         imagecopy($newImage, $this->image, 0, 0, 0, 0, 64, 32);
@@ -469,9 +484,17 @@ class Renderer {
         return $newImage;
     }
 
+    /**
+     * Improve skin format from the old to the 1.8 non slim format
+     * ================================================
+     * Меняет формат скина со старого в 1.8 не slim формат
+     *
+     * @throws \Exception
+     * @return resource
+     */
     public function improve() {
         if ($this->is1_8())
-            throw new \Exception("Skin already in 1.8 format!");
+            throw new \Exception("Skin is already in 1.8 format!");
 
         $newImage = $this->createEmptyImage(64, 64);
         imagecopy($newImage, $this->image, 0, 0, 0, 0, 64, 32);
@@ -493,7 +516,7 @@ class Renderer {
         $this->image = $image;
 
         if(!$this->image)
-            throw new \Exception("Could not read png image.");
+            throw new \Exception("PNG image can't be readed.");
 
         if(!$this->isValid())
             throw new \Exception("Invalid skin image.");

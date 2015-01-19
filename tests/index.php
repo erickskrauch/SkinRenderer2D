@@ -60,5 +60,14 @@ function temp_link($resource) {
         $renderer = Renderer::assignSkinFromFile(__DIR__ . "/demo_skin_old.png");
     ?>
     <img src="<?php echo temp_link($renderer->improve()); ?>" />
+
+    <h1>Узкий формат | Slim format</h1>
+    <?php
+    unset($renderer);
+    $renderer = Renderer::assignSkinFromFile(__DIR__ . "/demo_slim.png");
+    ?>
+    <img src="<?php echo temp_link($renderer->renderCombined(1)); ?>" />
+    <img src="<?php echo temp_link($renderer->renderCombined(10)); ?>" />
+    <img src="<?php echo temp_link($renderer->renderCombined(10, 0, 0, 0)); ?>" />
 </body>
 </html>
