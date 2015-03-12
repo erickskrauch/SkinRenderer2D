@@ -93,7 +93,7 @@ class Renderer {
         if (is_null($this->isAlpha)) {
             $this->isAlpha = $this->checkOpacity(1, 1, true) ||
                              $this->checkOpacity(62, 1, true) ||
-                             $this->checkOpacity(62, 62, true);
+                             ($this->is1_8() && $this->checkOpacity(62, 62, true));
         }
 
         return $this->isAlpha;
