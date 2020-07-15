@@ -1,7 +1,8 @@
 {
-    "name": "ErickSkrauch/SkinRenderer2D",
+    "name": "erickskrauch/skins-renderer-2d",
+    "description": "",
     "type": "library",
-    "keywords": ["minecraft","render", "skin"],
+    "keywords": ["minecraft", "render", "skin"],
     "license": "MIT",
     "authors": [
         {
@@ -9,12 +10,25 @@
             "email": "erickskrauch@ely.by"
         }
     ],
-    "autoload": {
-        "psr-4": {
-            "ErickSkrauch\\SkinRenderer2D\\": ""
-        }
+    "config": {
+        "sort-packages": true
     },
     "require": {
-        "php": ">=5.3.0"
+        "ext-gd": "*"
+    },
+    "require-dev": {
+        "php": "^7.1|^8.0",
+        "phpunit/phpunit": "^9.2",
+        "spatie/phpunit-snapshot-assertions": "^4.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "ErickSkrauch\\SkinRenderer2D\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ErickSkrauch\\SkinRenderer2D\\Tests\\": "tests"
+        }
     }
 }
