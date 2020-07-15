@@ -55,8 +55,8 @@ class RendererTest extends TestCase {
 
     public function renderSkinCases(): iterable {
         yield 'default skin, zoom x1' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/default.png'), 1];
-        yield 'modern skin, zoom x10' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/modern.png'), 10];
-        yield 'slim skin, zoom x3, background' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/slim.png'), 10, 0, 0, 0];
+        yield 'modern skin, zoom x10, background' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/modern.png'), 10, 0, 0, 0];
+        yield 'slim skin, zoom x5' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/slim.png'), 5];
     }
 
     /**

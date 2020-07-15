@@ -298,10 +298,20 @@ class Renderer {
             $this->imageСopyAlpha($newImage, $this->image, 4, 20, 4, 36, 4, 12, $colorAt);
             //left leg 2 | левая нога 2
             $this->imageСopyAlpha($newImage, $this->image, 8, 20, 4, 52, 4, 12, $colorAt);
+
             //right arm 2 | правая рука 2
-            $this->imageСopyAlpha($newImage, $this->image, 0, 8, 44, 36, 4, 12, $colorAt);
+            if ($this->isSlim()) {
+                $this->imageСopyAlpha($newImage, $this->image, 1, 8, 44, 36, 3, 12, $colorAt);
+            } else {
+                $this->imageСopyAlpha($newImage, $this->image, 0, 8, 44, 36, 4, 12, $colorAt);
+            }
+
             //left arm 2 | левая рука 2
-            $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 52, 4, 12, $colorAt);
+            if ($this->isSlim()) {
+                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 52, 3, 12, $colorAt);
+            } else {
+                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 52, 4, 12, $colorAt);
+            }
         } else {
             //left leg | левая нога
             $this->imageFlip($newImage, $this->image, 8, 20, 4, 20, 4, 12);
@@ -371,9 +381,18 @@ class Renderer {
             //left leg 2 | левая нога 2
             $this->imageСopyAlpha($newImage, $this->image, 4, 20, 12, 52, 4, 12, $colorAt);
             //right arm 2 | правая рука 2
-            $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 36, 4, 12, $colorAt);
+            if ($this->isSlim()) {
+                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 51, 36, 3, 12, $colorAt);
+            } else {
+                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 36, 4, 12, $colorAt);
+            }
+
             //left arm 2 | левая рука 2
-            $this->imageСopyAlpha($newImage, $this->image, 0, 8, 60, 52, 4, 12, $colorAt);
+            if ($this->isSlim()) {
+                $this->imageСopyAlpha($newImage, $this->image, 1, 8, 59, 52, 3, 12, $colorAt);
+            } else {
+                $this->imageСopyAlpha($newImage, $this->image, 0, 8, 60, 52, 4, 12, $colorAt);
+            }
         } else {
             //left leg | левая нога
             $this->imageFlip($newImage, $this->image, 4, 20, 12, 20, 4, 12);
