@@ -28,7 +28,11 @@ class Renderer {
     protected $image = NULL;
     protected $isAlpha = NULL;
     protected $is1_8 = NULL;
-    protected $isSlim = NULL;
+
+    /**
+     * @var boolean
+     */
+    private $isSlim = null;
 
     /**
      * Loads the skin image from a file path
@@ -123,6 +127,16 @@ class Renderer {
     }
 
     /**
+     * Manually sets skin's model type.
+     * Устанавливает тип модели скина напрямую.
+     *
+     * @param $isSlim
+     */
+    public function setIsSlim($isSlim) {
+        $this->isSlim = $isSlim;
+    }
+
+    /**
      * Return true if the skin has 1.8 format and slim arms
      * Возвращает true, если скин имеет формат 1.8 и узкие руки (slim)
      *
@@ -130,11 +144,7 @@ class Renderer {
      */
     public function isSlim() {
         if (!$this->isSlim) {
-            if (!$this->is1_8()) {
-                $this->isSlim = false;
-            } else {
-                $this->isSlim = $this->checkOpacity(54, 20, true);
-            }
+            $this->isSlim = $this->is1_8() && $this->checkOpacity(54, 20, true);
         }
 
         return $this->isSlim;
