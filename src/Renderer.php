@@ -269,28 +269,30 @@ class Renderer {
         $newImage = $this->createEmptyImage(16, 32, $r, $g, $b);
 
         // head with mask | голова с маской
-        imagecopy($newImage, $this->renderFace(), 4, 0, 0, 0, 8, 8);
+        $this->copyWithBlackBackground($newImage, $this->renderFace(), 4, 0, 0, 0, 8, 8);
         //body | тело
-        imagecopy($newImage, $this->image, 4, 8, 20, 20, 8, 12);
+        $this->copyWithBlackBackground($newImage, $this->image, 4, 8, 20, 20, 8, 12);
         //right leg | правая нога
-        imagecopy($newImage, $this->image, 4, 20, 4, 20, 4, 12);
+        $this->copyWithBlackBackground($newImage, $this->image, 4, 20, 4, 20, 4, 12);
 
         //right arm | правая рука
-        if (!$this->isSlim())
-            imagecopy($newImage, $this->image, 0, 8, 44, 20, 4, 12);
-        else
-            imagecopy($newImage, $this->image, 1, 8, 44, 20, 3, 12);
+        if (!$this->isSlim()) {
+            $this->copyWithBlackBackground($newImage, $this->image, 0, 8, 44, 20, 4, 12);
+        } else {
+            $this->copyWithBlackBackground($newImage, $this->image, 1, 8, 44, 20, 3, 12);
+        }
 
         // Рендерим элементы в зависимости от версии
         if ($this->is1_8()) {
             //left leg | левая нога
-            imagecopy($newImage, $this->image, 8, 20, 20, 52, 4, 12);
+            $this->copyWithBlackBackground($newImage, $this->image, 8, 20, 20, 52, 4, 12);
 
             //left arm | левая рука
-            if (!$this->isSlim())
-                imagecopy($newImage, $this->image, 12, 8, 36, 52, 4, 12);
-            else
-                imagecopy($newImage, $this->image, 12, 8, 36, 52, 3, 12);
+            if (!$this->isSlim()) {
+                $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 36, 52, 4, 12);
+            } else {
+                $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 36, 52, 3, 12);
+            }
 
             //body 2 | тело 2
             $this->imageСopyAlpha($newImage, $this->image, 4, 8, 20, 36, 8, 12, $colorAt);
@@ -314,15 +316,16 @@ class Renderer {
             }
         } else {
             //left leg | левая нога
-            $this->imageFlip($newImage, $this->image, 8, 20, 4, 20, 4, 12);
+            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 8, 20, 4, 20, 4, 12);
             //left arm | левая рука
-            $this->imageFlip($newImage, $this->image, 12, 8, 44, 20, 4, 12);
+            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 12, 8, 44, 20, 4, 12);
         }
 
         // Scale the image
         // Изменяем размер изображения
-        if($scale != 1)
+        if ($scale != 1) {
             return $this->scaleImage($newImage, $newWidth, $newHeight, is_null($r));
+        }
 
         return $newImage;
     }
@@ -347,32 +350,33 @@ class Renderer {
 
         $newImage = $this->createEmptyImage(16, 32, $r, $g, $b);
 
-
         //head | голова
-        imagecopy($newImage, $this->image, 4, 0, 24, 8, 8, 8);
+        $this->copyWithBlackBackground($newImage, $this->image, 4, 0, 24, 8, 8, 8);
         //head mask | маска
         $this->imageСopyAlpha($newImage, $this->image, 4, 0, 56, 8, 8, 8, imagecolorat($this->image, 63, 0));
         //body | тело
-        imagecopy($newImage, $this->image, 4, 8, 32, 20, 8, 12);
+        $this->copyWithBlackBackground($newImage, $this->image, 4, 8, 32, 20, 8, 12);
         //right leg | правая нога
-        imagecopy($newImage, $this->image, 8, 20, 12, 20, 4, 12);
+        $this->copyWithBlackBackground($newImage, $this->image, 8, 20, 12, 20, 4, 12);
 
         //right arm | правая рука
-        if (!$this->isSlim())
-            imagecopy($newImage, $this->image, 12, 8, 52, 20, 4, 12);
-        else
-            imagecopy($newImage, $this->image, 12, 8, 51, 20, 3, 12);
+        if (!$this->isSlim()) {
+            $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 52, 20, 4, 12);
+        } else {
+            $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 51, 20, 3, 12);
+        }
 
         // Рендерим элементы в зависимости от версии
         if ($this->is1_8()) {
             //left leg | левая нога
-            imagecopy($newImage, $this->image, 4, 20, 28, 52, 4, 12);
+            $this->copyWithBlackBackground($newImage, $this->image, 4, 20, 28, 52, 4, 12);
 
             //left arm | левая рука
-            if (!$this->isSlim())
-                imagecopy($newImage, $this->image, 0, 8, 44, 52, 4, 12);
-            else
-                imagecopy($newImage, $this->image, 1, 8, 43, 52, 3, 12);
+            if (!$this->isSlim()) {
+                $this->copyWithBlackBackground($newImage, $this->image, 0, 8, 44, 52, 4, 12);
+            } else {
+                $this->copyWithBlackBackground($newImage, $this->image, 1, 8, 43, 52, 3, 12);
+            }
 
             //body 2 | тело 2
             $this->imageСopyAlpha($newImage, $this->image, 4, 8, 32, 36, 8, 12, $colorAt);
@@ -395,14 +399,15 @@ class Renderer {
             }
         } else {
             //left leg | левая нога
-            $this->imageFlip($newImage, $this->image, 4, 20, 12, 20, 4, 12);
+            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 4, 20, 12, 20, 4, 12);
             //left arm | левая рука
-            $this->imageFlip($newImage, $this->image, 0, 8, 52, 20, 4, 12);
+            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 0, 8, 52, 20, 4, 12);
         }
 
         // Scale the image
-        if($scale != 1)
-            return $this->scaleImage($newImage, $newWidth, $newHeight, is_null($r));
+        if ($scale != 1) {
+            return $this->scaleImage($newImage, $newWidth, $newHeight, $r === null);
+        }
 
         return $newImage;
     }
@@ -465,21 +470,6 @@ class Renderer {
         } else {
             imagecopy($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $w, $h);
         }
-    }
-
-    /**
-     * In the old format skins left arm and leg should be reflected
-     * ================================================
-     * В старом формате скина левые рука и нога должны быть отражены
-     */
-    protected function imageFlip(&$result, &$img, $rx = 0, $ry = 0, $x = 0, $y = 0, $size_x = null, $size_y = null) {
-        if ($size_x < 1)
-            $size_x = imagesx($img);
-
-        if ($size_y < 1)
-            $size_y = imagesy($img);
-
-        imagecopyresampled($result, $img, $rx, $ry, ($x + $size_x - 1), $y, $size_x, $size_y, 0 - $size_x, $size_y);
     }
 
     /**
@@ -555,4 +545,37 @@ class Renderer {
         if (!is_null($this->image))
             imagedestroy($this->image);
     }
+
+    private function copyWithBlackBackground($dstResource, $srcResource, $dstX, $dstY, $srcX, $srcY, $width, $height) {
+        imagefilledrectangle($dstResource, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
+        imagecopy($dstResource, $srcResource, $dstX, $dstY, $srcX, $srcY, $width, $height);
+    }
+
+    /**
+     * In the old skins format left arm and leg should be reflected
+     * ================================================
+     * В старом формате скина левые рука и нога должны быть отражены
+     */
+    private function imageCopyWithBlackBackgroundAndFlipVertically(
+        $result,
+        $img,
+        $dstX = 0,
+        $dstY = 0,
+        $srcX = 0,
+        $srcY = 0,
+        $width = null,
+        $height = null
+    ) {
+        if ($width === null) {
+            $width = imagesx($img);
+        }
+
+        if ($height === null) {
+            $height = imagesy($img);
+        }
+
+        imagefilledrectangle($result, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
+        imagecopyresampled($result, $img, $dstX, $dstY, ($srcX + $width - 1), $srcY, $width, $height, -$width, $height);
+    }
+
 }
