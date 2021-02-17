@@ -26,11 +26,15 @@ namespace ErickSkrauch\SkinRenderer2D;
 
 class Renderer {
     protected $image = NULL;
-    protected $isAlpha = NULL;
     protected $is1_8 = NULL;
 
     /**
-     * @var boolean
+     * @var array|null
+     */
+    private $alphaColorIndex = null;
+
+    /**
+     * @var bool
      */
     private $isSlim = null;
 
@@ -61,6 +65,20 @@ class Renderer {
     }
 
     /**
+     * @param resource $image дескриптор файла скина
+     * @throws \Exception
+     */
+    public function __construct($image) {
+        $this->image = $image;
+
+        if(!$this->image)
+            throw new \Exception("PNG image can't be readed.");
+
+        if(!$this->isValid())
+            throw new \Exception("Invalid skin image.");
+    }
+
+    /**
      * Returns the width of the skin.
      * ================================================
      * Возвращает ширину скина
@@ -80,27 +98,6 @@ class Renderer {
      */
     public function getHeight() {
         return imagesy($this->image);
-    }
-
-    /**
-     * Return true if the skin has alpha chanel
-     * ================================================
-     * Возвращает true, если скин имеет альфа канал
-     *
-     * Почему крайние пиксели со смещением в 1px от края? Некоторые редакторы скинов
-     * оставляют там палитру цветов, использованных в скине, из-за чего функция
-     * возвращает false. Так что на вский случай проверяем несколько вариантов.
-     *
-     * @return bool
-     */
-    public function isAlpha() {
-        if (is_null($this->isAlpha)) {
-            $this->isAlpha = $this->checkOpacity(1, 1, true) ||
-                             $this->checkOpacity(62, 1, true) ||
-                             ($this->is1_8() && $this->checkOpacity(62, 62, true));
-        }
-
-        return $this->isAlpha;
     }
 
     /**
@@ -144,83 +141,10 @@ class Renderer {
      */
     public function isSlim() {
         if (!$this->isSlim) {
-            $this->isSlim = $this->is1_8() && $this->checkOpacity(54, 20, true);
+            $this->isSlim = $this->is1_8() && $this->isTransparent($this->image, 54, 20);
         }
 
         return $this->isSlim;
-    }
-
-    /**
-     * Test ($x, $y) for having any transparency
-     * Проверяет наличие прозврачности в координатах ($x, $y)
-     *
-     * @param int $x
-     * @param int $y
-     * @param bool $transparent если в true, то проверяет, полностью ли прозрачен пиксель
-     * @return bool
-     */
-    protected function checkOpacity($x, $y, $transparent = false) {
-        $alpha = imagecolorsforindex($this->image, imagecolorat($this->image, $x, $y))['alpha'];
-        if ($transparent)
-            return $alpha == 127;
-        else
-            return $alpha > 0;
-    }
-
-    /**
-     * Returns prepared resource for rendering skin
-     * If $r is NULL, then generates a transparent background
-     * ================================================
-     * Генерирует подготовленный ресурс для рендеринга скина
-     * Если $r NULL, то создаёт прозрачный фон
-     *
-     *
-     * @param int $width
-     * @param int $height
-     * @param int $r
-     * @param int $g
-     * @param int $b
-     * @return resource
-     */
-    protected function createEmptyImage($width = 16, $height = 32, $r = NULL, $g = NULL, $b = NULL) {
-        $newImage = imagecreatetruecolor($width, $height);
-
-        if (!is_null($r))
-            $background = imagecolorallocate($newImage, $r, $g, $b);
-        else {
-            $background = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
-            imagesavealpha($newImage, true);
-            imagealphablending($newImage, true);
-        }
-
-        imagefill($newImage, 0, 0, $background);
-
-        return $newImage;
-    }
-
-    /**
-     * Utility to scale the image given store the transparency
-     * ================================================
-     * Утилита для масштабирования изображения с учётом прозрачности
-     *
-     * @param $image
-     * @param $newWidth
-     * @param $newHeight
-     * @param bool $saveAlpha
-     * @return resource
-     */
-    protected function scaleImage($image, $newWidth, $newHeight, $saveAlpha = false) {
-        $resize = imagecreatetruecolor($newWidth, $newHeight);
-
-        if ($saveAlpha) {
-            imagesavealpha($resize, true);
-            imagealphablending($resize, false);
-        }
-
-        imagecopyresized($resize, $image, 0, 0, 0, 0, $newWidth, $newHeight, imagesx($image), imagesy($image));
-        imagedestroy($image);
-
-        return $resize;
     }
 
     /**
@@ -233,17 +157,17 @@ class Renderer {
      */
     public function renderFace($scale = 1) {
         $newWidth = $newHeight = 8 * $scale;
-        $colorAt = imagecolorat($this->image, 62, 1);
 
         $newImage = $this->createEmptyImage(8, 8);
 
         //head | голова
-        imagecopy($newImage, $this->image, 0, 0, 8, 8, 8, 8);
+        $this->copyNoAlpha($newImage, $this->image, 0, 0, 8, 8, 8, 8);
         //head mask | маска
-        $this->imageСopyAlpha($newImage, $this->image, 0, 0, 40, 8, 8, 8, $colorAt);
+        $this->copyAlpha($newImage, $this->image, 0, 0, 40, 8, 8, 8);
 
-        if($scale != 1)
-            return $this->scaleImage($newImage, $newWidth, $newHeight, false);
+        if ($scale != 1) {
+            return $this->scaleImage($newImage, $newWidth, $newHeight);
+        }
 
         return $newImage;
     }
@@ -264,61 +188,60 @@ class Renderer {
     public function renderFront($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
         $newWidth = 16 * $scale;
         $newHeight = 32 * $scale;
-        $colorAt = imagecolorat($this->image, 62, 1);
 
         $newImage = $this->createEmptyImage(16, 32, $r, $g, $b);
 
         // head with mask | голова с маской
-        $this->copyWithBlackBackground($newImage, $this->renderFace(), 4, 0, 0, 0, 8, 8);
+        $this->copyNoAlpha($newImage, $this->renderFace(), 4, 0, 0, 0, 8, 8);
         //body | тело
-        $this->copyWithBlackBackground($newImage, $this->image, 4, 8, 20, 20, 8, 12);
+        $this->copyNoAlpha($newImage, $this->image, 4, 8, 20, 20, 8, 12);
         //right leg | правая нога
-        $this->copyWithBlackBackground($newImage, $this->image, 4, 20, 4, 20, 4, 12);
+        $this->copyNoAlpha($newImage, $this->image, 4, 20, 4, 20, 4, 12);
 
         //right arm | правая рука
         if (!$this->isSlim()) {
-            $this->copyWithBlackBackground($newImage, $this->image, 0, 8, 44, 20, 4, 12);
+            $this->copyNoAlpha($newImage, $this->image, 0, 8, 44, 20, 4, 12);
         } else {
-            $this->copyWithBlackBackground($newImage, $this->image, 1, 8, 44, 20, 3, 12);
+            $this->copyNoAlpha($newImage, $this->image, 1, 8, 44, 20, 3, 12);
         }
 
         // Рендерим элементы в зависимости от версии
         if ($this->is1_8()) {
             //left leg | левая нога
-            $this->copyWithBlackBackground($newImage, $this->image, 8, 20, 20, 52, 4, 12);
+            $this->copyNoAlpha($newImage, $this->image, 8, 20, 20, 52, 4, 12);
 
             //left arm | левая рука
             if (!$this->isSlim()) {
-                $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 36, 52, 4, 12);
+                $this->copyNoAlpha($newImage, $this->image, 12, 8, 36, 52, 4, 12);
             } else {
-                $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 36, 52, 3, 12);
+                $this->copyNoAlpha($newImage, $this->image, 12, 8, 36, 52, 3, 12);
             }
 
             //body 2 | тело 2
-            $this->imageСopyAlpha($newImage, $this->image, 4, 8, 20, 36, 8, 12, $colorAt);
+            $this->copyAlpha($newImage, $this->image, 4, 8, 20, 36, 8, 12);
             //right leg 2 | правая нога 2
-            $this->imageСopyAlpha($newImage, $this->image, 4, 20, 4, 36, 4, 12, $colorAt);
+            $this->copyAlpha($newImage, $this->image, 4, 20, 4, 36, 4, 12);
             //left leg 2 | левая нога 2
-            $this->imageСopyAlpha($newImage, $this->image, 8, 20, 4, 52, 4, 12, $colorAt);
+            $this->copyAlpha($newImage, $this->image, 8, 20, 4, 52, 4, 12);
 
             //right arm 2 | правая рука 2
             if ($this->isSlim()) {
-                $this->imageСopyAlpha($newImage, $this->image, 1, 8, 44, 36, 3, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 1, 8, 44, 36, 3, 12);
             } else {
-                $this->imageСopyAlpha($newImage, $this->image, 0, 8, 44, 36, 4, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 0, 8, 44, 36, 4, 12);
             }
 
             //left arm 2 | левая рука 2
             if ($this->isSlim()) {
-                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 52, 3, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 12, 8, 52, 52, 3, 12);
             } else {
-                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 52, 4, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 12, 8, 52, 52, 4, 12);
             }
         } else {
             //left leg | левая нога
-            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 8, 20, 4, 20, 4, 12);
+            $this->copyNoAlphaAndFlipVertically($newImage, $this->image, 8, 20, 4, 20, 4, 12);
             //left arm | левая рука
-            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 12, 8, 44, 20, 4, 12);
+            $this->copyNoAlphaAndFlipVertically($newImage, $this->image, 12, 8, 44, 20, 4, 12);
         }
 
         // Scale the image
@@ -346,62 +269,61 @@ class Renderer {
     public function renderBack($scale = 1, $r = NULL, $g = NULL, $b = NULL) {
         $newWidth = 16 * $scale;
         $newHeight = 32 * $scale;
-        $colorAt = imagecolorat($this->image, 62, 1);
 
         $newImage = $this->createEmptyImage(16, 32, $r, $g, $b);
 
         //head | голова
-        $this->copyWithBlackBackground($newImage, $this->image, 4, 0, 24, 8, 8, 8);
+        $this->copyNoAlpha($newImage, $this->image, 4, 0, 24, 8, 8, 8);
         //head mask | маска
-        $this->imageСopyAlpha($newImage, $this->image, 4, 0, 56, 8, 8, 8, imagecolorat($this->image, 63, 0));
+        $this->copyAlpha($newImage, $this->image, 4, 0, 56, 8, 8, 8);
         //body | тело
-        $this->copyWithBlackBackground($newImage, $this->image, 4, 8, 32, 20, 8, 12);
+        $this->copyNoAlpha($newImage, $this->image, 4, 8, 32, 20, 8, 12);
         //right leg | правая нога
-        $this->copyWithBlackBackground($newImage, $this->image, 8, 20, 12, 20, 4, 12);
+        $this->copyNoAlpha($newImage, $this->image, 8, 20, 12, 20, 4, 12);
 
         //right arm | правая рука
         if (!$this->isSlim()) {
-            $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 52, 20, 4, 12);
+            $this->copyNoAlpha($newImage, $this->image, 12, 8, 52, 20, 4, 12);
         } else {
-            $this->copyWithBlackBackground($newImage, $this->image, 12, 8, 51, 20, 3, 12);
+            $this->copyNoAlpha($newImage, $this->image, 12, 8, 51, 20, 3, 12);
         }
 
         // Рендерим элементы в зависимости от версии
         if ($this->is1_8()) {
             //left leg | левая нога
-            $this->copyWithBlackBackground($newImage, $this->image, 4, 20, 28, 52, 4, 12);
+            $this->copyNoAlpha($newImage, $this->image, 4, 20, 28, 52, 4, 12);
 
             //left arm | левая рука
             if (!$this->isSlim()) {
-                $this->copyWithBlackBackground($newImage, $this->image, 0, 8, 44, 52, 4, 12);
+                $this->copyNoAlpha($newImage, $this->image, 0, 8, 44, 52, 4, 12);
             } else {
-                $this->copyWithBlackBackground($newImage, $this->image, 1, 8, 43, 52, 3, 12);
+                $this->copyNoAlpha($newImage, $this->image, 1, 8, 43, 52, 3, 12);
             }
 
             //body 2 | тело 2
-            $this->imageСopyAlpha($newImage, $this->image, 4, 8, 32, 36, 8, 12, $colorAt);
+            $this->copyAlpha($newImage, $this->image, 4, 8, 32, 36, 8, 12);
             //right leg 2 | правая нога 2
-            $this->imageСopyAlpha($newImage, $this->image, 8, 20, 12, 36, 4, 12, $colorAt);
+            $this->copyAlpha($newImage, $this->image, 8, 20, 12, 36, 4, 12);
             //left leg 2 | левая нога 2
-            $this->imageСopyAlpha($newImage, $this->image, 4, 20, 12, 52, 4, 12, $colorAt);
+            $this->copyAlpha($newImage, $this->image, 4, 20, 12, 52, 4, 12);
             //right arm 2 | правая рука 2
             if ($this->isSlim()) {
-                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 51, 36, 3, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 12, 8, 51, 36, 3, 12);
             } else {
-                $this->imageСopyAlpha($newImage, $this->image, 12, 8, 52, 36, 4, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 12, 8, 52, 36, 4, 12);
             }
 
             //left arm 2 | левая рука 2
             if ($this->isSlim()) {
-                $this->imageСopyAlpha($newImage, $this->image, 1, 8, 59, 52, 3, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 1, 8, 59, 52, 3, 12);
             } else {
-                $this->imageСopyAlpha($newImage, $this->image, 0, 8, 60, 52, 4, 12, $colorAt);
+                $this->copyAlpha($newImage, $this->image, 0, 8, 60, 52, 4, 12);
             }
         } else {
             //left leg | левая нога
-            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 4, 20, 12, 20, 4, 12);
+            $this->copyNoAlphaAndFlipVertically($newImage, $this->image, 4, 20, 12, 20, 4, 12);
             //left arm | левая рука
-            $this->imageCopyWithBlackBackgroundAndFlipVertically($newImage, $this->image, 0, 8, 52, 20, 4, 12);
+            $this->copyNoAlphaAndFlipVertically($newImage, $this->image, 0, 8, 52, 20, 4, 12);
         }
 
         // Scale the image
@@ -440,36 +362,6 @@ class Renderer {
             return $this->scaleImage($newImage, $newWidth, $newHeight, is_null($r));
 
         return $newImage;
-    }
-
-    /**
-     * Attempts to compensate for people (incorrectly) filling the head layers with random solid colors
-     * Instead of leaving them 100% Alpha.
-     * ================================================
-     * Пытается скопировать участок, который по ошибке был полностью закрашен в один из цветов,
-     * вместо того, чтобы оставить его прозрачным
-     *
-     * (прим. пер.) скин Нотча имеет чёрную подкладку и если этого не сделать, то голова будет полностью чёрная
-     */
-    protected function imageСopyAlpha($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $w, $h, $bg) {
-        if (!$this->isAlpha()) {
-            for($i = 0; $i < $w; $i++) {
-                for($j = 0; $j < $h; $j++) {
-
-                    $rgb = imagecolorat($src, $src_x + $i, $src_y + $j);
-
-                    if(($rgb & 0xFFFFFF) == ($bg & 0xFFFFFF)) {
-                        $alpha = 127;
-                    } else {
-                        $colors = imagecolorsforindex($src, $rgb);
-                        $alpha = $colors["alpha"];
-                    }
-                    imagecopymerge($dst, $src, $dst_x + $i, $dst_y + $j, $src_x + $i, $src_y + $j, 1, 1, 100 - (($alpha / 127) * 100));
-                }
-            }
-        } else {
-            imagecopy($dst, $src, $dst_x, $dst_y, $src_x, $src_y, $w, $h);
-        }
     }
 
     /**
@@ -527,28 +419,92 @@ class Renderer {
         return $newImage;
     }
 
-    /**
-     * @param resource $image дескриптор файла скина
-     * @throws \Exception
-     */
-    public function __construct($image) {
-        $this->image = $image;
-
-        if(!$this->image)
-            throw new \Exception("PNG image can't be readed.");
-
-        if(!$this->isValid())
-            throw new \Exception("Invalid skin image.");
-    }
-
     public function __destruct() {
-        if (!is_null($this->image))
+        if (!is_null($this->image)) {
             imagedestroy($this->image);
+        }
     }
 
-    private function copyWithBlackBackground($dstResource, $srcResource, $dstX, $dstY, $srcX, $srcY, $width, $height) {
-        imagefilledrectangle($dstResource, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
-        imagecopy($dstResource, $srcResource, $dstX, $dstY, $srcX, $srcY, $width, $height);
+    /**
+     * Returns prepared resource for rendering skin
+     * If $r is NULL, then generates a transparent background
+     * ================================================
+     * Генерирует подготовленный ресурс для рендеринга скина
+     * Если $r NULL, то создаёт прозрачный фон
+     *
+     *
+     * @param int $width
+     * @param int $height
+     * @param int $r
+     * @param int $g
+     * @param int $b
+     * @return resource
+     */
+    private function createEmptyImage($width = 16, $height = 32, $r = NULL, $g = NULL, $b = NULL) {
+        $newImage = imagecreatetruecolor($width, $height);
+
+        if (!is_null($r))
+            $background = imagecolorallocate($newImage, $r, $g, $b);
+        else {
+            $background = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
+            imagesavealpha($newImage, true);
+            imagealphablending($newImage, true);
+        }
+
+        imagefill($newImage, 0, 0, $background);
+
+        return $newImage;
+    }
+
+    /**
+     * Utility to scale the image given store the transparency
+     * ================================================
+     * Утилита для масштабирования изображения с учётом прозрачности
+     *
+     * @param $image
+     * @param $newWidth
+     * @param $newHeight
+     * @param bool $saveAlpha
+     * @return resource
+     */
+    private function scaleImage($image, $newWidth, $newHeight, $saveAlpha = false) {
+        $resize = imagecreatetruecolor($newWidth, $newHeight);
+
+        if ($saveAlpha) {
+            imagesavealpha($resize, true);
+            imagealphablending($resize, false);
+        }
+
+        imagecopyresized($resize, $image, 0, 0, 0, 0, $newWidth, $newHeight, imagesx($image), imagesy($image));
+        imagedestroy($image);
+
+        return $resize;
+    }
+
+    private function copyNoAlpha($dst, $src, $dstX, $dstY, $srcX, $srcY, $width, $height) {
+        imagefilledrectangle($dst, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
+        for ($i = 0; $i < $width; $i++) {
+            for ($j = 0; $j < $height; $j++) {
+                if ($this->isTransparent($src, $srcX + $i, $srcY + $j)) {
+                    continue;
+                }
+
+                imagecopymerge($dst, $src, $dstX + $i, $dstY + $j, $srcX + $i, $srcY + $j, 1, 1, 100);
+            }
+        }
+    }
+
+    private function copyAlpha($dst, $src, $dstX, $dstY, $srcX, $srcY, $width, $height) {
+        for ($i = 0; $i < $width; $i++) {
+            for ($j = 0; $j < $height; $j++) {
+                if ($this->isTransparent($src, $srcX + $i, $srcY + $j)) {
+                    continue;
+                }
+
+                $alpha = imagecolorsforindex($src, imagecolorat($src, $srcX + $i, $srcY + $j))['alpha'];
+                imagecopymerge($dst, $src, $dstX + $i, $dstY + $j, $srcX + $i, $srcY + $j, 1, 1, 100 - (($alpha / 127) * 100));
+            }
+        }
     }
 
     /**
@@ -556,26 +512,49 @@ class Renderer {
      * ================================================
      * В старом формате скина левые рука и нога должны быть отражены
      */
-    private function imageCopyWithBlackBackgroundAndFlipVertically(
-        $result,
-        $img,
-        $dstX = 0,
-        $dstY = 0,
-        $srcX = 0,
-        $srcY = 0,
-        $width = null,
-        $height = null
-    ) {
-        if ($width === null) {
-            $width = imagesx($img);
+    private function copyNoAlphaAndFlipVertically($dst, $src, $dstX, $dstY, $srcX, $srcY, $width, $height) {
+        imagefilledrectangle($dst, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
+        for ($i = 0; $i < $width; $i++) {
+            for ($j = 0; $j < $height; $j++) {
+                if ($this->isTransparent($src, $srcX + $i, $srcY + $j)) {
+                    continue;
+                }
+
+                imagecopymerge($dst, $src, $dstX + $width - $i - 1, $dstY + $j, $srcX + $i, $srcY + $j, 1, 1, 100);
+            }
+        }
+    }
+
+    /**
+     * @return array
+     */
+    private function getAlphaColor() {
+        if ($this->alphaColorIndex === null) {
+            $this->alphaColorIndex = imagecolorsforindex($this->image, imagecolorat($this->image, 1, 1));
         }
 
-        if ($height === null) {
-            $height = imagesy($img);
+        return $this->alphaColorIndex;
+    }
+
+    /**
+     * Test ($x, $y) for having any transparency
+     * Проверяет наличие прозврачности в координатах ($x, $y)
+     *
+     * @param resource $resource
+     * @param int $x
+     * @param int $y
+     * @return bool
+     */
+    private function isTransparent($resource, $x, $y) {
+        $color = imagecolorsforindex($resource, imagecolorat($resource, $x, $y));
+        $alphaColor = $this->getAlphaColor();
+        if ($alphaColor['alpha'] === 127) {
+            return $color['alpha'] === 127;
         }
 
-        imagefilledrectangle($result, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
-        imagecopyresampled($result, $img, $dstX, $dstY, ($srcX + $width - 1), $srcY, $width, $height, -$width, $height);
+        return $color['red'] === $alphaColor['red']
+            && $color['green'] === $alphaColor['green']
+            && $color['blue'] === $alphaColor['blue'];
     }
 
 }
