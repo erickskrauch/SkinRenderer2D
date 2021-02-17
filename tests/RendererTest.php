@@ -59,6 +59,7 @@ class RendererTest extends TestCase {
         yield 'slim skin, zoom x5' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/slim.png'), 5];
         // Add background to assert, that body still will be black
         yield 'transparent kitty' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/kitty.png'), 5, 255, 0, 0];
+        yield 'half-transparent (iss #1)' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/transparency.png'), 10];
     }
 
     /**
