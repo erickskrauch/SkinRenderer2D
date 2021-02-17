@@ -30,6 +30,7 @@ class RendererTest extends TestCase {
     public function renderFaceCases(): iterable {
         yield 'zoom x1' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/default.png'), 1];
         yield 'zoom x10' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/default.png'), 10];
+        yield 'transparent regions on the face' => [Renderer::assignSkinFromFile(__DIR__ . '/skins/semi_transparency_face.png'), 10];
     }
 
     /**

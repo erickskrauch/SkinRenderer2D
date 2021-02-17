@@ -65,6 +65,20 @@ class Renderer {
     }
 
     /**
+     * @param resource $image дескриптор файла скина
+     * @throws \Exception
+     */
+    public function __construct($image) {
+        $this->image = $image;
+
+        if(!$this->image)
+            throw new \Exception("PNG image can't be readed.");
+
+        if(!$this->isValid())
+            throw new \Exception("Invalid skin image.");
+    }
+
+    /**
      * Returns the width of the skin.
      * ================================================
      * Возвращает ширину скина
@@ -127,84 +141,10 @@ class Renderer {
      */
     public function isSlim() {
         if (!$this->isSlim) {
-            $this->isSlim = $this->is1_8() && $this->checkOpacity(54, 20, true);
+            $this->isSlim = $this->is1_8() && $this->isTransparent($this->image, 54, 20);
         }
 
         return $this->isSlim;
-    }
-
-    /**
-     * Test ($x, $y) for having any transparency
-     * Проверяет наличие прозврачности в координатах ($x, $y)
-     *
-     * @param int $x
-     * @param int $y
-     * @param bool $transparent если в true, то проверяет, полностью ли прозрачен пиксель
-     * @return bool
-     */
-    protected function checkOpacity($x, $y, $transparent = false) {
-        // TODO: rework
-        $alpha = imagecolorsforindex($this->image, imagecolorat($this->image, $x, $y))['alpha'];
-        if ($transparent)
-            return $alpha == 127;
-        else
-            return $alpha > 0;
-    }
-
-    /**
-     * Returns prepared resource for rendering skin
-     * If $r is NULL, then generates a transparent background
-     * ================================================
-     * Генерирует подготовленный ресурс для рендеринга скина
-     * Если $r NULL, то создаёт прозрачный фон
-     *
-     *
-     * @param int $width
-     * @param int $height
-     * @param int $r
-     * @param int $g
-     * @param int $b
-     * @return resource
-     */
-    protected function createEmptyImage($width = 16, $height = 32, $r = NULL, $g = NULL, $b = NULL) {
-        $newImage = imagecreatetruecolor($width, $height);
-
-        if (!is_null($r))
-            $background = imagecolorallocate($newImage, $r, $g, $b);
-        else {
-            $background = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
-            imagesavealpha($newImage, true);
-            imagealphablending($newImage, true);
-        }
-
-        imagefill($newImage, 0, 0, $background);
-
-        return $newImage;
-    }
-
-    /**
-     * Utility to scale the image given store the transparency
-     * ================================================
-     * Утилита для масштабирования изображения с учётом прозрачности
-     *
-     * @param $image
-     * @param $newWidth
-     * @param $newHeight
-     * @param bool $saveAlpha
-     * @return resource
-     */
-    protected function scaleImage($image, $newWidth, $newHeight, $saveAlpha = false) {
-        $resize = imagecreatetruecolor($newWidth, $newHeight);
-
-        if ($saveAlpha) {
-            imagesavealpha($resize, true);
-            imagealphablending($resize, false);
-        }
-
-        imagecopyresized($resize, $image, 0, 0, 0, 0, $newWidth, $newHeight, imagesx($image), imagesy($image));
-        imagedestroy($image);
-
-        return $resize;
     }
 
     /**
@@ -221,12 +161,13 @@ class Renderer {
         $newImage = $this->createEmptyImage(8, 8);
 
         //head | голова
-        imagecopy($newImage, $this->image, 0, 0, 8, 8, 8, 8);
+        $this->copyNoAlpha($newImage, $this->image, 0, 0, 8, 8, 8, 8);
         //head mask | маска
         $this->copyAlpha($newImage, $this->image, 0, 0, 40, 8, 8, 8);
 
-        if($scale != 1)
-            return $this->scaleImage($newImage, $newWidth, $newHeight, false);
+        if ($scale != 1) {
+            return $this->scaleImage($newImage, $newWidth, $newHeight);
+        }
 
         return $newImage;
     }
@@ -424,38 +365,6 @@ class Renderer {
     }
 
     /**
-     * Attempts to compensate for people (incorrectly) filling the head layers with random solid colors
-     * Instead of leaving them 100% Alpha.
-     * ================================================
-     * Пытается скопировать участок, который по ошибке был полностью закрашен в один из цветов,
-     * вместо того, чтобы оставить его прозрачным
-     *
-     * (прим. пер.) скин Нотча имеет чёрную подкладку и если этого не сделать, то голова будет полностью чёрная
-     */
-    protected function copyAlpha($dst, $src, $dstX, $dstY, $srcX, $srcY, $w, $h) {
-        $alphaColor = $this->getAlphaColor();
-        if ($alphaColor['alpha'] === 127) {
-            imagecopy($dst, $src, $dstX, $dstY, $srcX, $srcY, $w, $h);
-            return;
-        }
-
-        for ($i = 0; $i < $w; $i++) {
-            for ($j = 0; $j < $h; $j++) {
-                $rgb = imagecolorat($src, $srcX + $i, $srcY + $j);
-                $colors = imagecolorsforindex($src, $rgb);
-                if ($colors['red'] === $alphaColor['red']
-                 && $colors['green'] === $alphaColor['green']
-                 && $colors['blue'] === $alphaColor['blue']
-                ) {
-                    continue;
-                }
-
-                imagecopymerge($dst, $src, $dstX + $i, $dstY + $j, $srcX + $i, $srcY + $j, 1, 1, 100 - (($colors['alpha'] / 127) * 100));
-            }
-        }
-    }
-
-    /**
      * Degrades skin from the new to the old format
      * ================================================
      * Меняет формат скина с нового на старый
@@ -510,29 +419,92 @@ class Renderer {
         return $newImage;
     }
 
-    /**
-     * @param resource $image дескриптор файла скина
-     * @throws \Exception
-     */
-    public function __construct($image) {
-        $this->image = $image;
-
-        if(!$this->image)
-            throw new \Exception("PNG image can't be readed.");
-
-        if(!$this->isValid())
-            throw new \Exception("Invalid skin image.");
-    }
-
     public function __destruct() {
-        if (!is_null($this->image))
+        if (!is_null($this->image)) {
             imagedestroy($this->image);
+        }
     }
 
-    private function copyNoAlpha($dstResource, $srcResource, $dstX, $dstY, $srcX, $srcY, $width, $height) {
-        imagefilledrectangle($dstResource, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
-        // TODO: investigate, how Minecraft handles semi-transparent pixels on non transparent parts
-        imagecopy($dstResource, $srcResource, $dstX, $dstY, $srcX, $srcY, $width, $height);
+    /**
+     * Returns prepared resource for rendering skin
+     * If $r is NULL, then generates a transparent background
+     * ================================================
+     * Генерирует подготовленный ресурс для рендеринга скина
+     * Если $r NULL, то создаёт прозрачный фон
+     *
+     *
+     * @param int $width
+     * @param int $height
+     * @param int $r
+     * @param int $g
+     * @param int $b
+     * @return resource
+     */
+    private function createEmptyImage($width = 16, $height = 32, $r = NULL, $g = NULL, $b = NULL) {
+        $newImage = imagecreatetruecolor($width, $height);
+
+        if (!is_null($r))
+            $background = imagecolorallocate($newImage, $r, $g, $b);
+        else {
+            $background = imagecolorallocatealpha($newImage, 255, 255, 255, 127);
+            imagesavealpha($newImage, true);
+            imagealphablending($newImage, true);
+        }
+
+        imagefill($newImage, 0, 0, $background);
+
+        return $newImage;
+    }
+
+    /**
+     * Utility to scale the image given store the transparency
+     * ================================================
+     * Утилита для масштабирования изображения с учётом прозрачности
+     *
+     * @param $image
+     * @param $newWidth
+     * @param $newHeight
+     * @param bool $saveAlpha
+     * @return resource
+     */
+    private function scaleImage($image, $newWidth, $newHeight, $saveAlpha = false) {
+        $resize = imagecreatetruecolor($newWidth, $newHeight);
+
+        if ($saveAlpha) {
+            imagesavealpha($resize, true);
+            imagealphablending($resize, false);
+        }
+
+        imagecopyresized($resize, $image, 0, 0, 0, 0, $newWidth, $newHeight, imagesx($image), imagesy($image));
+        imagedestroy($image);
+
+        return $resize;
+    }
+
+    private function copyNoAlpha($dst, $src, $dstX, $dstY, $srcX, $srcY, $width, $height) {
+        imagefilledrectangle($dst, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
+        for ($i = 0; $i < $width; $i++) {
+            for ($j = 0; $j < $height; $j++) {
+                if ($this->isTransparent($src, $srcX + $i, $srcY + $j)) {
+                    continue;
+                }
+
+                imagecopymerge($dst, $src, $dstX + $i, $dstY + $j, $srcX + $i, $srcY + $j, 1, 1, 100);
+            }
+        }
+    }
+
+    private function copyAlpha($dst, $src, $dstX, $dstY, $srcX, $srcY, $width, $height) {
+        for ($i = 0; $i < $width; $i++) {
+            for ($j = 0; $j < $height; $j++) {
+                if ($this->isTransparent($src, $srcX + $i, $srcY + $j)) {
+                    continue;
+                }
+
+                $alpha = imagecolorsforindex($src, imagecolorat($src, $srcX + $i, $srcY + $j))['alpha'];
+                imagecopymerge($dst, $src, $dstX + $i, $dstY + $j, $srcX + $i, $srcY + $j, 1, 1, 100 - (($alpha / 127) * 100));
+            }
+        }
     }
 
     /**
@@ -540,18 +512,17 @@ class Renderer {
      * ================================================
      * В старом формате скина левые рука и нога должны быть отражены
      */
-    private function copyNoAlphaAndFlipVertically(
-        $result,
-        $img,
-        $dstX,
-        $dstY,
-        $srcX,
-        $srcY,
-        $width,
-        $height
-    ) {
-        imagefilledrectangle($result, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
-        imagecopyresampled($result, $img, $dstX, $dstY, ($srcX + $width - 1), $srcY, $width, $height, -$width, $height);
+    private function copyNoAlphaAndFlipVertically($dst, $src, $dstX, $dstY, $srcX, $srcY, $width, $height) {
+        imagefilledrectangle($dst, $dstX, $dstY, $dstX + $width - 1, $dstY + $height - 1, 0x000000);
+        for ($i = 0; $i < $width; $i++) {
+            for ($j = 0; $j < $height; $j++) {
+                if ($this->isTransparent($src, $srcX + $i, $srcY + $j)) {
+                    continue;
+                }
+
+                imagecopymerge($dst, $src, $dstX + $width - $i - 1, $dstY + $j, $srcX + $i, $srcY + $j, 1, 1, 100);
+            }
+        }
     }
 
     /**
@@ -563,6 +534,27 @@ class Renderer {
         }
 
         return $this->alphaColorIndex;
+    }
+
+    /**
+     * Test ($x, $y) for having any transparency
+     * Проверяет наличие прозврачности в координатах ($x, $y)
+     *
+     * @param resource $resource
+     * @param int $x
+     * @param int $y
+     * @return bool
+     */
+    private function isTransparent($resource, $x, $y) {
+        $color = imagecolorsforindex($resource, imagecolorat($resource, $x, $y));
+        $alphaColor = $this->getAlphaColor();
+        if ($alphaColor['alpha'] === 127) {
+            return $color['alpha'] === 127;
+        }
+
+        return $color['red'] === $alphaColor['red']
+            && $color['green'] === $alphaColor['green']
+            && $color['blue'] === $alphaColor['blue'];
     }
 
 }
